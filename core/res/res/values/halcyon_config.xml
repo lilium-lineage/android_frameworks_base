@@ -2,4 +2,11 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <!-- PowerOffAlarmService -->
     <bool name="config_powerOffAlarmEnabled">false</bool>
+
+    <!-- Define device configs on boot -->
+    <string-array name="global_device_configs_override" translatable="false">
+    </string-array>
+    <string-array name="device_configs_override" translatable="false">
+    </string-array>
+
 </resources>
