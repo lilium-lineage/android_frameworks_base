@@ -39,6 +39,7 @@ import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.database.ContentObserver;
 import android.graphics.Bitmap;
 import android.graphics.BlendMode;
 import android.graphics.Color;
@@ -58,6 +59,9 @@ import android.graphics.drawable.TransitionDrawable;
 import android.media.session.MediaController;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
+import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Process;
 import android.os.Trace;
 import android.os.UserHandle;
@@ -272,6 +276,11 @@ public class MediaControlPanel {
     private boolean mWasPlaying = false;
     private boolean mButtonClicked = false;
 
+    private final boolean mShowRippleByDefault;
+    private final boolean mShowTurbulenceByDefault;
+    private boolean mShowRipple;
+    private boolean mShowTurbulence;
+
     private final PaintDrawCallback mNoiseDrawCallback =
             new PaintDrawCallback() {
                 @Override
@@ -293,6 +302,61 @@ public class MediaControlPanel {
                     }
                 }
             };
+
+    private final SettingsObserver mSettingsObserver = new SettingsObserver();
+    private class SettingsObserver extends ContentObserver {
+        SettingsObserver() {
+            super(new Handler(Looper.getMainLooper()));
+        }
+
+        void observe() {
+            mContext.getContentResolver().registerContentObserver(Settings.Secure.getUriFor(
+                    Settings.Secure.MEDIA_CONTROLS_RIPPLE),
+                    false, this, UserHandle.USER_ALL);
+            mContext.getContentResolver().registerContentObserver(Settings.Secure.getUriFor(
+                    Settings.Secure.MEDIA_CONTROLS_TURBULENCE),
+                    false, this, UserHandle.USER_ALL);
+        }
+
+        void stop() {
+            mContext.getContentResolver().unregisterContentObserver(this);
+        }
+
+        @Override
+        public void onChange(boolean selfChange, Uri uri) {
+            switch (uri.getLastPathSegment()) {
+                case Settings.Secure.MEDIA_CONTROLS_RIPPLE:
+                    updateShowRipple();
+                    updatePlayers();
+                    break;
+                case Settings.Secure.MEDIA_CONTROLS_TURBULENCE:
+                    updateShowTurbulence();
+                    updatePlayers();
+                    break;
+            }
+        }
+
+        void update() {
+            updateShowRipple();
+            updateShowTurbulence();
+        }
+
+        private void updateShowRipple() {
+            mShowRipple = Settings.Secure.getInt(mContext.getContentResolver(),
+                    Settings.Secure.MEDIA_CONTROLS_RIPPLE, mShowRippleByDefault ? 1 : 0) == 1;
+        }
+
+        private void updateShowTurbulence() {
+            mShowTurbulence = Settings.Secure.getInt(mContext.getContentResolver(),
+                    Settings.Secure.MEDIA_CONTROLS_TURBULENCE, mShowTurbulenceByDefault ? 1 : 0) == 1;
+        }
+
+        private void updatePlayers() {
+            if (mMediaCarouselController == null) return;
+            mMediaCarouselController.updatePlayers(true);
+        }
+
+    }
 
     /**
      * Initialize a new control panel
@@ -343,6 +407,11 @@ public class MediaControlPanel {
         mLockscreenUserManager = lockscreenUserManager;
         mBroadcastDialogController = broadcastDialogController;
         mCommunalSceneInteractor = communalSceneInteractor;
+
+        mShowRippleByDefault = context.getResources().getBoolean(
+                com.android.internal.R.bool.config_mediaControlsRippleByDefault);
+        mShowTurbulenceByDefault = context.getResources().getBoolean(
+                com.android.internal.R.bool.config_mediaControlsTurbulenceByDefault);
 
         mSeekBarViewModel.setLogSeek(() -> {
             if (mPackageName != null && mInstanceId != null) {
@@ -665,7 +734,7 @@ public class MediaControlPanel {
                         mLoadingEffect::finish,
                         TURBULENCE_NOISE_PLAY_DURATION
                 );
-            } else {
+            } else if (mShowTurbulence) {
                 mTurbulenceNoiseController.play(
                         Type.SIMPLEX_NOISE,
                         mTurbulenceNoiseAnimationConfig

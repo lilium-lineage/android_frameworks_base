@@ -12967,6 +12967,18 @@ public final class Settings {
          */
         private static final Set<String> CLONE_TO_MANAGED_PROFILE = new ArraySet<>();
 
+        /**
+         * Whether to show the ripple effects on media controls
+         * @hide
+         */
+        public static final String MEDIA_CONTROLS_RIPPLE = "media_controls_ripple";
+        
+        /**Add commentMore actions
+         * Whether to show the turbulence effects on media controls
+         * @hide
+         */
+        public static final String MEDIA_CONTROLS_TURBULENCE = "media_controls_turbulence";
+
         static {
             CLONE_TO_MANAGED_PROFILE.add(ACCESSIBILITY_ENABLED);
             CLONE_TO_MANAGED_PROFILE.add(ALLOW_MOCK_LOCATION);
